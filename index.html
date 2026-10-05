@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>乳製品パズルゲーム</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 10px 0;
+      background: #f7f5ed;
+      color: #4a3e3d;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Hiragino Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+      touch-action: none;
+      overflow-x: hidden;
+    }
+    #game-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 500px;
+      max-width: 95vw;
+    }
+    #header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: #5c4b38;
+      margin-bottom: 6px;
+    }
+    .score-val { color: #d35400; font-size: 17px; }
+    
+    #title-panel {
+      width: 100%;
+      background: #8e6d53;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    #title-row-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #title-current { color: #f39c12; font-weight: bold; }
+    #next-title-info { font-size: 11px; color: #f2e3d5; }
+
+    #progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: #5d4533;
+      border-radius: 3px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+    #progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #f1c40f;
+      transition: width 0.3s ease;
+    }
+
+    #title-list-toggle {
+      background: #6e523c;
+      color: #fff;
+      border: none;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+    #title-list {
+      display: none;
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px solid #aa876a;
+      font-size: 11px;
+      line-height: 1.5;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    #title-list.show { display: block; }
+    .title-item {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #aa876a;
+      padding: 1px 0;
+    }
+
+    #trivia-box {
+      width: 100%;
+      min-height: 38px;
+      background: #fff8e7;
+      border: 1px solid #f39c12;
+      color: #7f4f24;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+
+    #next-box {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #fff;
+      padding: 2px 10px;
+      border-radius: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      font-size: 12px;
+    }
+    #next-emoji { font-size: 18px; }
+
+    #reset-btn {
+      background: #e67e22;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    }
+    #reset-btn:active { transform: scale(0.95); }
+
+    canvas {
+      border: 3px solid #bcab98;
+      border-radius: 8px;
+      background: #ffffff;
+      cursor: pointer;
+      max-width: 100%;
+      height: auto;
+      touch-action: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    #guide {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      background: #fff;
+      padding: 6px 4px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .guide-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 9px;
+      color: #555;
+      text-align: center;
+      flex: 1;
+    }
+    .guide-item span:first-child { font-size: 15px; }
+    .guide-item .guide-name {
+      font-size: 8px;
+      line-height: 1.1;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+
+  <div id="game-container">
+    <div id="header">
+      <div>SCORE <span id="score" class="score-val">0</span></div>
+      <div id="next-box">NEXT <span id="next-emoji">🥛</span></div>
+      <div>HIGH <span id="high-score" class="score-val">0</span></div>
+      <button id="reset-btn">リトライ</button>
+    </div>
+
+    <div id="title-panel">
+      <div id="title-row-main">
+        <div><span id="title-current">ミルク見習い</span></div>
+        <div id="next-title-info">次まで: <span id="pts-to-next" style="color:#f39c12; font-weight:bold;">500</span> pt</div>
+        <button id="title-list-toggle">一覧 ▼</button>
+      </div>
+      <div id="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+      <div id="title-list"></div>
+    </div>
+
+    <div id="trivia-box">💡 乳製品を落としてくっつけよう！同じ種類同士でランクアップ！</div>
+    
+    <div id="guide"></div>
+  </div>
+
+  <script>
+    const { Engine, Runner, Bodies, Composite, Events, Body } = Matter;
+
+    // 乳製品の定義（10段階）
+    const DAIRY_ITEMS = [
+      {
+        name: "生乳",
+        shortName: "生乳",
+        emoji: "🥛",
+        radius: 14,
+        score: 10,
+        type: "原料",
+        fact: "すべての乳製品の原点。絞りたてのフレッシュなミルク！"
+      },
+      {
+        name: "ヨーグルト",
+        shortName: "ヨーグルト",
+        emoji: "🥣",
+        radius: 18,
+        score: 20,
+        type: "発酵乳",
+        fact: "乳酸菌がたっぷりで、お腹の調子を整えてくれる健康食。"
+      },
+      {
+        name: "プリン",
+        shortName: "プリン",
+        emoji: "🍮",
+        radius: 28,
+        score: 40,
+        type: "洋菓子",
+        fact: "牛乳とたまごの優しい甘さがひろがる定番スイーツ。"
+      },
+      {
+        name: "ソフトクリーム",
+        shortName: "ソフト",
+        emoji: "🍦",
+        radius: 38,
+        score: 80,
+        type: "冷菓",
+        fact: "濃厚な生ミルクの味わいとなめらかな口どけが最高！"
+      },
+      {
+        name: "バター",
+        shortName: "バター",
+        emoji: "🧈",
+        radius: 50,
+        score: 160,
+        type: "油脂類",
+        fact: "生クリームをじっくり練り上げて作られる豊かな風味。"
+      },
+      {
+        name: "カマンベール",
+        shortName: "チーズ",
+        emoji: "🧀",
+        radius: 66,
+        score: 320,
+        type: "チーズ",
+        fact: "表面の白カビにより中がトロリとろけるフランス発祥のチーズ。"
+      },
+      {
+        name: "ホールチーズ",
+        shortName: "大チーズ",
+        emoji: "🧀",
+        radius: 78,
+        score: 640,
+        type: "チーズ",
+        fact: "じっくり時間をかけて熟成された大きな熟成チーズ。"
+      },
+      {
+        name: "フルーツパフェ",
+        shortName: "パフェ",
+        emoji: "🍨",
+        radius: 92,
+        score: 1280,
+        type: "スイーツ",
+        fact: "アイスと生クリーム、フルーツがたっぷり入った豪華なパフェ。"
+      },
+      {
+        name: "デコレーションケーキ",
+        shortName: "ケーキ",
+        emoji: "🎂",
+        radius: 106,
+        score: 2560,
+        type: "スイーツ",
+        fact: "純白のフレッシュな生クリームで贅沢に飾られた大作ケーキ。"
+      },
+      {
+        name: "巨大ミルクタンク",
+        shortName: "タンク",
+        emoji: "🐄",
+        radius: 120,
+        score: 5120,
+        type: "牧場施設",
+        fact: "新鮮なミルクをたっぷり冷やして保管する牧場のシンボル！"
+      }
+    ];
+
+    const TITLES = [
+      { min: 30000, name: "👑 伝説の乳製品王" },
+      { min: 8000,  name: "🐄 牧場マスター" },
+      { min: 5000,  name: "🎂 ベテランパティシエ" },
+      { min: 3000,  name: "🧀 チーズ職人" },
+      { min: 1500,  name: "🧈 バターマイスター" },
+      { min: 500,   name: "🍦 ミルク愛好家" },
+      { min: 0,     name: "🥛 ミルク見習い" }
+    ];
+
+    // サウンドエフェクト (Web Audio API)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function playMergeSound(pitchMult = 1.0) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        const now = audioCtx.currentTime;
+        osc.frequency.setValueAtTime(440 * pitchMult, now);
+        osc.frequency.exponentialRampToValueAtTime(880 * pitchMult, now + 0.12);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } catch (e) {}
+    }
+
+    // ガイドと称号UIの初期化
+    const guideEl = document.getElementById('guide');
+    DAIRY_ITEMS.forEach((itemDef) => {
+      const item = document.createElement('div');
+      item.className = 'guide-item';
+      item.innerHTML = `<span>${itemDef.emoji}</span><span class="guide-name">${itemDef.shortName}</span>`;
+      guideEl.appendChild(item);
+    });
+
+    const titleListEl = document.getElementById('title-list');
+    TITLES.slice().reverse().forEach(t => {
+      const div = document.createElement('div');
+      div.className = 'title-item';
+      div.innerHTML = `<span>${t.name}</span><span>${t.min.toLocaleString()} pt~</span>`;
+      titleListEl.appendChild(div);
+    });
+
+    let score = 0;
+    let highScore = 0;
+
+    try {
+      highScore = parseInt(localStorage.getItem('dairy_high_score')) || 0;
+    } catch (e) {
+      highScore = 0;
+    }
+
+    document.getElementById('high-score').textContent = highScore;
+
+    function updateTitleUI(sc) {
+      let currentTitle = TITLES[TITLES.length - 1].name;
+      let nextMin = TITLES[TITLES.length - 2].min;
+      let currentMin = 0;
+
+      for (let i = 0; i < TITLES.length; i++) {
+        if (sc >= TITLES[i].min) {
+          currentTitle = TITLES[i].name;
+          currentMin = TITLES[i].min;
+          nextMin = (i > 0) ? TITLES[i - 1].min : TITLES[i].min;
+          break;
+        }
+      }
+
+      document.getElementById('title-current').textContent = currentTitle;
+
+      if (sc >= 30000) {
+        document.getElementById('next-title-info').innerHTML = "🏆 最高称号獲得！";
+        document.getElementById('progress-bar-fill').style.width = "100%";
+      } else {
+        const remaining = nextMin - sc;
+        const totalGap = nextMin - currentMin;
+        const progressPercent = Math.min(100, Math.max(0, ((sc - currentMin) / totalGap) * 100));
+        
+        document.getElementById('pts-to-next').textContent = remaining;
+        document.getElementById('progress-bar-fill').style.width = `${progressPercent}%`;
+      }
+    }
+
+    updateTitleUI(highScore);
+
+    const toggleBtn = document.getElementById('title-list-toggle');
+    const titleList = document.getElementById('title-list');
+    toggleBtn.addEventListener('click', () => {
+      titleList.classList.toggle('show');
+      toggleBtn.textContent = titleList.classList.contains('show') ? "一覧 ▲" : "一覧 ▼";
+    });
+
+    let currentLevel = 0;
+    let nextLevel = Math.floor(Math.random() * 3);
+    let currentX = 250;
+    let canDrop = true;
+    let isGameOver = false;
+    let isDanger = false;
+
+    let popups = [];
+
+    // Matter.js 物理エンジンの設定
+    const engine = Engine.create({
+      constraintIterations: 3,
+      positionIterations: 8,
+      velocityIterations: 8
+    });
+    const world = engine.world;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 500;
+    canvas.height = 520;
+    document.getElementById('game-container').insertBefore(canvas, guideEl);
+
+    Runner.run(Runner.create(), engine);
+
+    // 壁と床（厚さを十分確保して抜け防止）
+    const wallOptions = { isStatic: true, friction: 0.2, restitution: 0.05 };
+    const ground = Bodies.rectangle(250, 545, 500, 70, wallOptions);
+    const leftWall = Bodies.rectangle(-30, 260, 60, 520, wallOptions);
+    const rightWall = Bodies.rectangle(530, 260, 60, 520, wallOptions);
+    Composite.add(world, [ground, leftWall, rightWall]);
+
+    // 乳製品ボディ作成（物理パラメータを最適化）
+    function createDairyBody(x, y, radius) {
+      return Bodies.circle(x, y, radius, {
+        restitution: 0.1,    // 跳ね返りを抑えて安定感を向上
+        friction: 0.15,     // 摩擦を適度に持たせて不自然な滑りを防止
+        frictionStatic: 0.3,
+        frictionAir: 0.002, // 空気を少し重くし安定して落下
+        density: 0.0025
+      });
+    }
+
+    // タッチ・マウス位置の計算関数
+    function updateXPosition(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const scale = canvas.width / rect.width;
+      const relativeX = (clientX - rect.left) * scale;
+      const rad = DAIRY_ITEMS[currentLevel].radius;
+      currentX = Math.max(rad + 12, Math.min(500 - rad - 12, relativeX));
+    }
+
+    function handlePointerMove(e) {
+      if (!canDrop || isGameOver) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      updateXPosition(clientX);
+    }
+
+    function handlePointerUp(e) {
+      if (!canDrop || isGameOver) return;
+      dropDairy();
+    }
+
+    canvas.addEventListener('mousemove', handlePointerMove);
+    canvas.addEventListener('mouseup', handlePointerUp);
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handlePointerMove(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      handlePointerMove(e);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      handlePointerUp(e);
+    }, { passive: false });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      location.reload();
+    });
+
+    function updateNextUI() {
+      document.getElementById('next-emoji').textContent = DAIRY_ITEMS[nextLevel].emoji;
+    }
+    updateNextUI();
+
+    function displayTrivia(item) {
+      document.getElementById('trivia-box').innerHTML = 
+        `💡 <b>${item.emoji} ${item.name}</b> (${item.type}): ${item.fact}`;
+    }
+
+    function dropDairy() {
+      canDrop = false;
+      const itemDef = DAIRY_ITEMS[currentLevel];
+
+      displayTrivia(itemDef);
+
+      const dairy = createDairyBody(currentX, 45, itemDef.radius);
+      dairy.dairyLevel = currentLevel;
+      dairy.spawnTime = Date.now();
+
+      Composite.add(world, dairy);
+
+      currentLevel = nextLevel;
+      nextLevel = Math.floor(Math.random() * 3);
+      updateNextUI();
+
+      setTimeout(() => { canDrop = true; }, 400);
+    }
+
+    // 衝突（合体）判定の処理
+    Events.on(engine, 'collisionStart', (event) => {
+      event.pairs.forEach((pair) => {
+        const { bodyA, bodyB } = pair;
+
+        if (bodyA.dairyLevel !== undefined && bodyB.dairyLevel !== undefined) {
+          if (bodyA.dairyLevel === bodyB.dairyLevel) {
+            const currentLvl = bodyA.dairyLevel;
+            const nextLvl = currentLvl + 1;
+
+            const midX = (bodyA.position.x + bodyB.position.x) / 2;
+            const midY = (bodyA.position.y + bodyB.position.y) / 2;
+
+            Composite.remove(world, bodyA);
+            Composite.remove(world, bodyB);
+
+            const gainedScore = DAIRY_ITEMS[currentLvl].score;
+            score = Math.min(99999, score + gainedScore);
+            document.getElementById('score').textContent = score;
+
+            playMergeSound(1 + currentLvl * 0.1);
+
+            const evolvedItem = DAIRY_ITEMS[Math.min(nextLvl, DAIRY_ITEMS.length - 1)];
+            displayTrivia(evolvedItem);
+
+            if (score > highScore) {
+              highScore = Math.min(99999, score);
+              document.getElementById('high-score').textContent = highScore;
+              try {
+                localStorage.setItem('dairy_high_score', highScore);
+              } catch (e) {}
+              updateTitleUI(highScore);
+            }
+
+            popups.push({
+              x: midX,
+              y: midY,
+              text: `+${gainedScore}`,
+              opacity: 1.0,
+              life: 25
+            });
+
+            if (nextLvl < DAIRY_ITEMS.length) {
+              const nextDef = DAIRY_ITEMS[nextLvl];
+              const newDairy = createDairyBody(midX, midY, nextDef.radius);
+              newDairy.dairyLevel = nextLvl;
+              newDairy.spawnTime = Date.now();
+
+              Composite.add(world, newDairy);
+            }
+          }
+        }
+      });
+    });
+
+    const DEADLINE_Y = 85;
+    setInterval(() => {
+      if (isGameOver) return;
+      const bodies = Composite.allBodies(world);
+      const now = Date.now();
+
+      let checkDanger = false;
+
+      bodies.forEach(body => {
+        if (body.dairyLevel !== undefined && (now - body.spawnTime > 1500)) {
+          const topY = body.position.y - DAIRY_ITEMS[body.dairyLevel].radius;
+          
+          if (topY < DEADLINE_Y + 30) {
+            checkDanger = true;
+          }
+
+          if (topY < DEADLINE_Y) {
+            isGameOver = true;
+            setTimeout(() => {
+              alert(`ゲームオーバー！\n獲得スコア: ${score} pt`);
+              location.reload();
+            }, 100);
+          }
+        }
+      });
+
+      isDanger = checkDanger;
+    }, 250);
+
+    let pulseAngle = 0;
+    (function renderLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      pulseAngle += 0.08;
+
+      // 限界線の描画
+      if (isDanger) {
+        ctx.strokeStyle = `rgba(231, 76, 60, ${0.5 + Math.sin(pulseAngle) * 0.5})`;
+        ctx.lineWidth = 4;
+      } else {
+        ctx.strokeStyle = '#d5c4b1';
+        ctx.lineWidth = 2;
+      }
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(5, DEADLINE_Y);
+      ctx.lineTo(495, DEADLINE_Y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 床デザイン
+      ctx.fillStyle = '#d5c4b1';
+      ctx.fillRect(0, 510, 500, 10);
+
+      // 落下プレビュー（ガイド線）
+      if (canDrop && !isGameOver) {
+        const currentDef = DAIRY_ITEMS[currentLevel];
+
+        ctx.strokeStyle = 'rgba(180, 160, 140, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(currentX, 45);
+        ctx.lineTo(currentX, 510);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.font = `${currentDef.radius * 1.8}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.85;
+        ctx.fillText(currentDef.emoji, currentX, 45);
+        ctx.globalAlpha = 1.0;
+      }
+
+      // 各物理オブジェクトの描画
+      const bodies = Composite.allBodies(world);
+      bodies.forEach(body => {
+        if (body.dairyLevel !== undefined) {
+          const itemDef = DAIRY_ITEMS[body.dairyLevel];
+          ctx.save();
+          ctx.translate(body.position.x, body.position.y);
+          ctx.rotate(body.angle);
+
+          ctx.font = `${itemDef.radius * 1.8}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(itemDef.emoji, 0, 0);
+
+          ctx.restore();
+        }
+      });
+
+      // 加点ポップアップ描画
+      for (let i = popups.length - 1; i >= 0; i--) {
+        const p = popups[i];
+        ctx.save();
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = `rgba(211, 84, 0, ${p.opacity})`;
+        ctx.textAlign = 'center';
+        ctx.fillText(p.text, p.x, p.y);
+        ctx.restore();
+
+        p.y -= 1;
+        p.opacity -= 0.04;
+        p.life--;
+
+        if (p.life <= 0) popups.splice(i, 1);
+      }
+
+      requestAnimationFrame(renderLoop);
+    })();
+  </script>
+</body>
+</html>
